@@ -68,8 +68,6 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             self.monstor2?.scale = SCNVector3(0.02, 0.02, 0.02)
             self.sceneView.scene.rootNode.addChildNode(self.monstor2!)
 
-            self.monstor2?.rotation = SCNVector4(1, 0, 0, 0.25 * Double.pi)
-
         })
         actionSheet.addAction(UIAlertAction(title: "cancel", style: .cancel) {_ in })
         present(actionSheet, animated: true, completion: nil)
