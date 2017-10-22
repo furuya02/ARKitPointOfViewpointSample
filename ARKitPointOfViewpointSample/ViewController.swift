@@ -14,12 +14,14 @@ class ViewController: UIViewController, ARSCNViewDelegate {
 
     @IBOutlet var sceneView: ARSCNView!
     var recordingButton: RecordingButton!
-    
+    var monstor: SCNNode?
+    var monstor2: SCNNode?
+
     enum Mode {
         case none // 考慮なし
         case positoin // カメラの現在位置を考慮する
-        case rotation // カメラの現在位置と角度を考慮する
-        case eulerAngles // カメラの現在位置と角度と仰角を考慮する
+        case eulerAngles // カメラの現在位置とオイラー角を考慮する
+        case monstor // 2匹のモンスターを表示する
     }
     var mode = Mode.none
 
@@ -49,8 +51,26 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     func setMode()  {
         let actionSheet = UIAlertController(title: "mode", message: "select the mode to place the Cube.", preferredStyle: .actionSheet)
         actionSheet.addAction(UIAlertAction(title: "position", style: .default) { _ in self.mode = .positoin })
-        actionSheet.addAction(UIAlertAction(title: "rotation", style: .default) { _ in self.mode = .rotation })
         actionSheet.addAction(UIAlertAction(title: "eulerAngles", style: .default) { _ in self.mode = .eulerAngles })
+        actionSheet.addAction(UIAlertAction(title: "monstor", style: .default) { _ in
+            self.mode = .monstor
+
+            let scene = SCNScene(named: "art.scnassets/monstor.scn")!
+            self.monstor = scene.rootNode.childNode(withName: "obj", recursively: true)
+            self.monstor?.position = SCNVector3(-0.15, 0, -1)
+            self.monstor?.scale = SCNVector3(0.02, 0.02, 0.02)
+            self.sceneView.scene.rootNode.addChildNode(self.monstor!)
+            
+
+            // モンスターのクローンを作成する
+            self.monstor2 = self.monstor?.clone()
+            self.monstor2?.position = SCNVector3(0.15, 0, -1)
+            self.monstor2?.scale = SCNVector3(0.02, 0.02, 0.02)
+            self.sceneView.scene.rootNode.addChildNode(self.monstor2!)
+
+            self.monstor2?.rotation = SCNVector4(1, 0, 0, 0.25 * Double.pi)
+
+        })
         actionSheet.addAction(UIAlertAction(title: "cancel", style: .cancel) {_ in })
         present(actionSheet, animated: true, completion: nil)
     }
@@ -63,6 +83,9 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     
     // 画面をタップすると、色々な色でキューブを表示する
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if mode == .monstor {
+            return
+        }
         let node = SCNNode() // ノードを生成
         node.geometry = SCNBox(width: 0.1, height: 0.1, length: 0.1, chamferRadius: 0)
         let material = SCNMaterial() // マテリアル（表面）を生成する
@@ -75,11 +98,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             let position = SCNVector3(x: 0, y: 0, z: -0.5) // ノードの位置は、左右：0m 上下：0m　奥に50cm
             if let camera = sceneView.pointOfView {
                 node.position = camera.convertPosition(position, to: nil) // カメラ位置からの偏差で求めた位置
-                if mode == .rotation {
-                    node.rotation = camera.rotation // カメラの角度と同じにする
-                } else if mode == .eulerAngles {
-                    node.rotation = camera.rotation // カメラの角度と同じにする
-                    node.eulerAngles = camera.eulerAngles  // カメラの仰角と同じにする
+                if mode == .eulerAngles {
+                    node.eulerAngles = camera.eulerAngles  // カメラのオイラー角と同じにする
                 }
             }
         }
@@ -93,5 +113,18 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         let blue = CGFloat(arc4random() % 10) * 0.1
         return UIColor(red: red, green: green, blue: blue, alpha: 1)
         
+    }
+    
+    func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
+        if let camera = sceneView.pointOfView {
+            // 一匹のモンスターのみオイラー角をカメラと同じにする
+            
+            monstor?.rotation = camera.rotation
+
+            let x = Double(camera.eulerAngles.x) * 180 / Double.pi
+            let y = Double(camera.eulerAngles.y) * 180 / Double.pi
+            let z = Double(camera.eulerAngles.z) * 180 / Double.pi
+            print(String(format: "😄eulerAngles x:%.0f y:%.0f z:%.0f", x/10, y/10, z/10))
+        }
     }
 }
